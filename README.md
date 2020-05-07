@@ -20,3 +20,9 @@
 * ceres-1.14.0
 * 新版g2o
 
+## Reference
+
+1. [slambook](https://github.com/gaoxiang12/slambook)
+
+2. [slambook2](https://github.com/gaoxiang12/slambook2)
+
