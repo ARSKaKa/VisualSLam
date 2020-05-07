@@ -1,3 +1,0 @@
-/home/peiwvy/Desktop/myslambook/Class3/Task/Task1/cmake-build-debug/CMakeFiles/rebuild_cache.dir
-/home/peiwvy/Desktop/myslambook/Class3/Task/Task1/cmake-build-debug/CMakeFiles/Drawtrajectory.dir
-/home/peiwvy/Desktop/myslambook/Class3/Task/Task1/cmake-build-debug/CMakeFiles/edit_cache.dir

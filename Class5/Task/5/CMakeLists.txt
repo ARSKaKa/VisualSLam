@@ -15,5 +15,5 @@ include_directories(
         ${Pangolin_INCLUDE_DIRS}
 )
 
-add_executable( computeORB computeORB.cpp  )
-target_link_libraries( computeORB ${OpenCV_LIBS} )
+add_executable(ICP ICP.cpp)
+target_link_libraries(ICP ${Sophus_LIBRARIES} ${Pangolin_LIBRARIES})

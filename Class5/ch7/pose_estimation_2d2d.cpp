@@ -27,14 +27,14 @@ void pose_estimation_2d2d(
 // 像素坐标转相机归一化坐标
 Point2d pixel2cam(const Point2d &p, const Mat &K);
 
+string first_file = "../1.png";
+string second_file = "../2.png";
+
 int main(int argc, char **argv) {
-  if (argc != 3) {
-    cout << "usage: pose_estimation_2d2d img1 img2" << endl;
-    return 1;
-  }
   //-- 读取图像
-  Mat img_1 = imread(argv[1], CV_LOAD_IMAGE_COLOR);
-  Mat img_2 = imread(argv[2], CV_LOAD_IMAGE_COLOR);
+  cv::Mat img_1 = cv::imread(first_file, 0);
+  cv::Mat img_2 = cv::imread(second_file, 0);
+  assert(img_1.data != nullptr && img_2.data != nullptr);
   assert(img_1.data && img_2.data && "Can not load images!");
 
   vector<KeyPoint> keypoints_1, keypoints_2;

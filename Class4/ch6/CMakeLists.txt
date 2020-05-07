@@ -13,7 +13,7 @@ find_package(Ceres REQUIRED)
 include_directories(${CERES_INCLUDE_DIRS})
 
 # g2o
-list( APPEND CMAKE_MODULE_PATH /home/peiwvy/Desktop/g2o-master/cmake_modules) //定位到cmake_modules
+list(APPEND CMAKE_MODULE_PATH ${PROJECT_SOURCE_DIR}/cmake)
 set(G2O_ROOT /usr/local/include/g2o)
 find_package(G2O REQUIRED)
 include_directories(${G2O_INCLUDE_DIRS})

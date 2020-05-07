@@ -8,8 +8,8 @@ using namespace cv;
 
 // this program shows how to use optical flow
 
-string file_1 = "./1.png";  // first image
-string file_2 = "./2.png";  // second image
+string file_1 = "../1.png";  // first image
+string file_2 = "../2.png";  // second image
 
 // TODO implement this funciton
 /**
@@ -18,8 +18,8 @@ string file_2 = "./2.png";  // second image
  * @param [in] img2 the second image
  * @param [in] kp1 keypoints in img1
  * @param [in|out] kp2 keypoints in img2, if empty, use initial guess in kp1
- * @param [out] success true if a keypoint is tracked successfully
- * @param [in] inverse use inverse formulation?
+ * @param [out] success true if a keypoint is tracked successfully 针对每个keypoint做处理
+ * @param [in] inverse use inverse formulation? 根据这个参数分别完成正向和反向两个函数
  */
 void OpticalFlowSingleLevel(
         const Mat &img1,
@@ -51,7 +51,7 @@ void OpticalFlowMultiLevel(
 );
 
 /**
- * get a gray scale value from reference image (bi-linear interpolated)
+ * get a gray scale value from reference image (bi-linear interpolated)双线性插值获得浮点的像素值
  * @param img
  * @param x
  * @param y
@@ -72,7 +72,7 @@ inline float GetPixelValue(const cv::Mat &img, float x, float y) {
 
 int main(int argc, char **argv) {
 
-    // images, note they are CV_8UC1, not CV_8UC3
+    // images, note they are CV_8UC1, not CV_8UC3 灰度图单通道
     Mat img1 = imread(file_1, 0);
     Mat img2 = imread(file_2, 0);
 
@@ -85,12 +85,12 @@ int main(int argc, char **argv) {
     // first use single level LK in the validation picture
     vector<KeyPoint> kp2_single;
     vector<bool> success_single;
-    OpticalFlowSingleLevel(img1, img2, kp1, kp2_single, success_single);
+    OpticalFlowSingleLevel(img1, img2, kp1, kp2_single, success_single, true);
 
     // then test multi-level LK
     vector<KeyPoint> kp2_multi;
     vector<bool> success_multi;
-    OpticalFlowMultiLevel(img1, img2, kp1, kp2_multi, success_multi);
+    OpticalFlowMultiLevel(img1, img2, kp1, kp2_multi, success_multi,true);
 
     // use opencv's flow for validation
     vector<Point2f> pt1, pt2;
@@ -105,7 +105,7 @@ int main(int argc, char **argv) {
     for (int i = 0; i < kp2_single.size(); i++) {
         if (success_single[i]) {
             cv::circle(img2_single, kp2_single[i].pt, 2, cv::Scalar(0, 250, 0), 2);
-            cv::line(img2_single, kp1[i].pt, kp2_single[i].pt, cv::Scalar(0, 250, 0));
+            cv::line(img2_single, kp1[i].pt, kp2_single[i].pt, cv::Scalar(0, 0, 230));
         }
     }
 
@@ -114,7 +114,7 @@ int main(int argc, char **argv) {
     for (int i = 0; i < kp2_multi.size(); i++) {
         if (success_multi[i]) {
             cv::circle(img2_multi, kp2_multi[i].pt, 2, cv::Scalar(0, 250, 0), 2);
-            cv::line(img2_multi, kp1[i].pt, kp2_multi[i].pt, cv::Scalar(0, 250, 0));
+            cv::line(img2_multi, kp1[i].pt, kp2_multi[i].pt, cv::Scalar( 0, 0, 230));
         }
     }
 
@@ -123,7 +123,7 @@ int main(int argc, char **argv) {
     for (int i = 0; i < pt2.size(); i++) {
         if (status[i]) {
             cv::circle(img2_CV, pt2[i], 2, cv::Scalar(0, 250, 0), 2);
-            cv::line(img2_CV, pt1[i], pt2[i], cv::Scalar(0, 250, 0));
+            cv::line(img2_CV, pt1[i], pt2[i], cv::Scalar(0, 0, 230));
         }
     }
 
@@ -131,6 +131,9 @@ int main(int argc, char **argv) {
     cv::imshow("tracked multi level", img2_multi);
     cv::imshow("tracked by opencv", img2_CV);
     cv::waitKey(0);
+    // cv::imwrite("/home/xbot/VSLAM_Homework/ch6/image/multi02_inverse.jpg",img2_multi);
+    // cv::imwrite("/home/xbot/VSLAM_Homework/ch6/image/single_inverse_16.jpg",img2_single);
+    // cv::imwrite("/home/xbot/VSLAM_Homework/ch6/image/opencv_16.jpg",img2_CV);
 
     return 0;
 }
@@ -143,7 +146,6 @@ void OpticalFlowSingleLevel(
         vector<bool> &success,
         bool inverse
 ) {
-
     // parameters
     int half_patch_size = 4;
     int iterations = 10;
@@ -166,36 +168,47 @@ void OpticalFlowSingleLevel(
             Eigen::Vector2d b = Eigen::Vector2d::Zero();
             cost = 0;
 
+            // 检查是否在边缘
             if (kp.pt.x + dx <= half_patch_size || kp.pt.x + dx >= img1.cols - half_patch_size ||
                 kp.pt.y + dy <= half_patch_size || kp.pt.y + dy >= img1.rows - half_patch_size) {   // go outside
                 succ = false;
                 break;
             }
 
-            // compute cost and jacobian
+            // compute cost and jacobian  x和y都是[-4,3]
             for (int x = -half_patch_size; x < half_patch_size; x++)
                 for (int y = -half_patch_size; y < half_patch_size; y++) {
-
                     // TODO START YOUR CODE HERE (~8 lines)
+                    float u1, v1, u2, v2;
+                    u1 = kp.pt.x + x;
+                    u2 = u1 + dx;
+                    v1 = kp.pt.y + y;
+                    v2 = v1 + dy;
                     double error = 0;
+                    error = GetPixelValue(img2,u2,v2)-GetPixelValue(img1,u1, v1);
                     Eigen::Vector2d J;  // Jacobian
+                    // 这里是对dx，dy求导
                     if (inverse == false) {
                         // Forward Jacobian
+                        J[0] = (GetPixelValue(img2,u2+1,v2) - GetPixelValue(img2,u2-1,v2))/2; // de/dx
+                        J[1] = (GetPixelValue(img2,u2,v2+1) - GetPixelValue(img2,u2,v2-1))/2; // de/dy
                     } else {
                         // Inverse Jacobian
                         // NOTE this J does not change when dx, dy is updated, so we can store it and only compute error
+                        J[0] = (GetPixelValue(img1,u1+1,v1) - GetPixelValue(img1,u1-1,v1))/2; // de/dx
+                        J[1] = (GetPixelValue(img1,u1,v1+1) - GetPixelValue(img1,u1,v1-1))/2; // de/dy
                     }
-
                     // compute H, b and set cost;
-                    H;
-                    b;
-                    cost;
+                    H += J * J.transpose();
+                    b += -error * J ;
+                    cost += error * error;
                     // TODO END YOUR CODE HERE
                 }
 
             // compute update
             // TODO START YOUR CODE HERE (~1 lines)
             Eigen::Vector2d update;
+            update = H.ldlt().solve(b);
             // TODO END YOUR CODE HERE
 
             if (isnan(update[0])) {
@@ -239,20 +252,45 @@ void OpticalFlowMultiLevel(
 
     // parameters
     int pyramids = 4;
-    double pyramid_scale = 0.5;
-    double scales[] = {1.0, 0.5, 0.25, 0.125};
+    double pyramid_scale = 0.3;
+    double scales[] = {1.0, 0.3, 0.09, 0.027};
 
     // create pyramids
-    vector<Mat> pyr1, pyr2; // image pyramids
+    vector<Mat> pyr1, pyr2; // image pyramids 注意这里是个vector
     // TODO START YOUR CODE HERE (~8 lines)
+    Mat img1_temp, img2_temp;
     for (int i = 0; i < pyramids; i++) {
-
+        resize(img1, img1_temp, Size(img1.cols*scales[i],img1.rows*scales[i]));
+        resize(img2, img2_temp, Size(img2.cols*scales[i],img2.rows*scales[i]));
+        pyr1.push_back(img1_temp);
+        pyr2.push_back(img2_temp);
     }
     // TODO END YOUR CODE HERE
-
     // coarse-to-fine LK tracking in pyramids
+    // 这里的关键：上一层的估计值做下一层的初始值
     // TODO START YOUR CODE HERE
+    vector<KeyPoint> kp1_pyr, kp2_pyr, kp2_temp;
+    for (int m = pyramids-1; m >= 0; --m) {
+        img1_temp = pyr1[m];
+        img2_temp = pyr2[m];
 
+        for (auto kp: kp1){
+            kp.pt *= scales[m];
+            kp1_pyr.push_back(kp);
+        }
+        OpticalFlowSingleLevel(img1_temp, img2_temp,kp1_pyr,kp2_temp,success, inverse);
+        kp1_pyr.clear();
+
+        if (m){
+            kp2_pyr.clear();
+            for (auto kp: kp2_temp){
+                kp.pt /= pyramid_scale;
+                kp2_pyr.push_back(kp);
+            }
+            kp2_temp = kp2_pyr;
+        }
+    }
+    kp2 = kp2_pyr;
     // TODO END YOUR CODE HERE
     // don't forget to set the results into kp2
 }

@@ -15,6 +15,7 @@ int main(int argc, char **argv) {
      T1w.rotate(q1);
      T1w.pretranslate(Vector3d(0.7, 1.1, 0.2));
      cout << "Transform matrix T_cw1= \n" << T1w.matrix() << endl;
+     cout << "Transform matrix T_cw1.inverse= \n" << T1w.inverse().matrix() << endl;
      Isometry3d T2w = Isometry3d::Identity();             
      T2w.rotate(q2);
      T2w.pretranslate(Vector3d(-0.1, 0.4, 0.8));

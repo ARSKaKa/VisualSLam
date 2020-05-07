@@ -15,5 +15,5 @@ include_directories(
         ${Pangolin_INCLUDE_DIRS}
 )
 
-add_executable( computeORB computeORB.cpp  )
-target_link_libraries( computeORB ${OpenCV_LIBS} )
+add_executable( E2Rt E2Rt.cpp  )
+target_link_libraries( E2Rt  )

@@ -1,31 +1,24 @@
 cmake_minimum_required(VERSION 2.8)
-project(pose_graph)
 
+project(bundle_adjustment)
 set(CMAKE_BUILD_TYPE "Release")
-set(CMAKE_CXX_FLAGS "-std=c++11 -O2")
+set(CMAKE_CXX_FLAGS "-O3 -std=c++11")
 
-list(APPEND CMAKE_MODULE_PATH ${PROJECT_SOURCE_DIR}/cmake_modules)
+LIST(APPEND CMAKE_MODULE_PATH ${PROJECT_SOURCE_DIR}/cmake)
 
-# Eigen
-include_directories("/usr/include/eigen3")
+Find_Package(G2O REQUIRED)
+Find_Package(Eigen3 REQUIRED)
+Find_Package(Ceres REQUIRED)
+Find_Package(Sophus REQUIRED)
+Find_Package(CSparse REQUIRED)
 
-# sophus 
-find_package(Sophus REQUIRED)
-include_directories(${Sophus_INCLUDE_DIRS})
+SET(G2O_LIBS g2o_csparse_extension g2o_stuff g2o_core cxsparse)
 
-# g2o 
-find_package(G2O REQUIRED)
-include_directories(${G2O_INCLUDE_DIRS})
+include_directories(${PROJECT_SOURCE_DIR} ${EIGEN3_INCLUDE_DIR} ${CSPARSE_INCLUDE_DIR})
 
-add_executable(pose_graph_g2o_SE3 pose_graph_g2o_SE3.cpp)
-target_link_libraries(pose_graph_g2o_SE3
-        g2o_core g2o_stuff g2o_types_slam3d ${CHOLMOD_LIBRARIES}
-        )
+add_library(bal_common common.cpp)
+add_executable(bundle_adjustment_g2o bundle_adjustment_g2o.cpp)
+add_executable(bundle_adjustment_ceres bundle_adjustment_ceres.cpp)
 
-add_executable(pose_graph_g2o_lie pose_graph_g2o_lie_algebra.cpp)
-target_link_libraries(pose_graph_g2o_lie
-        g2o_core g2o_stuff
-        ${CHOLMOD_LIBRARIES}
-        ${Sophus_LIBRARIES}
-        )
-
+target_link_libraries(bundle_adjustment_ceres ${CERES_LIBRARIES} bal_common)
+target_link_libraries(bundle_adjustment_g2o ${G2O_LIBS} bal_common)

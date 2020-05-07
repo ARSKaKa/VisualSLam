@@ -2,6 +2,7 @@ cmake_minimum_required(VERSION 2.8)
 project(draw_trajectory)
 
 find_package(Pangolin REQUIRED)
+message(STATUS ${Pangolin_INCLUDE_DIRS})
 include_directories(${Pangolin_INCLUDE_DIRS})
 
 find_package(Sophus REQUIRED)

@@ -4,14 +4,18 @@
 //
 
 #include <opencv2/opencv.hpp>
-
+#include "math.h"
 #include <string>
+#include <algorithm>
+#include <chrono>
 
 using namespace std;
+using namespace cv;
+using namespace chrono;
 
 // global variables
-string first_file = "./1.png";
-string second_file = "./2.png";
+string first_file = "../1.png";
+string second_file = "../2.png";
 
 const double pi = 3.1415926;    // pi
 
@@ -50,9 +54,9 @@ int main(int argc, char **argv) {
     cv::Mat second_image = cv::imread(second_file, 0);  // load grayscale image
 
     // plot the image
-    cv::imshow("first image", first_image);
-    cv::imshow("second image", second_image);
-    cv::waitKey(0);
+    // cv::imshow("first image", first_image);
+    // cv::imshow("second image", second_image);
+    // cv::waitKey(0);
 
     // detect FAST keypoints using threshold=40
     vector<cv::KeyPoint> keypoints;
@@ -70,8 +74,8 @@ int main(int argc, char **argv) {
     cv::Mat image_show;
     cv::drawKeypoints(first_image, keypoints, image_show, cv::Scalar::all(-1),
                       cv::DrawMatchesFlags::DRAW_RICH_KEYPOINTS);
-    cv::imshow("features", image_show);
-    cv::imwrite("feat1.png", image_show);
+    // cv::imshow("features", image_show);
+    // cv::imwrite("/home/xbot/VSLAM_Homework/ch5/feat1.png", image_show);
     cv::waitKey(0);
 
     // we can also match descriptors between images
@@ -95,7 +99,7 @@ int main(int argc, char **argv) {
     // plot the matches
     cv::drawMatches(first_image, keypoints, second_image, keypoints2, matches, image_show);
     cv::imshow("matches", image_show);
-    cv::imwrite("matches.png", image_show);
+    // cv::imwrite("/home/xbot/VSLAM_Homework/ch5/matches_d_80.png", image_show);
     cv::waitKey(0);
 
     cout << "done." << endl;
@@ -105,15 +109,36 @@ int main(int argc, char **argv) {
 // -------------------------------------------------------------------------------------------------- //
 
 // compute the angle
+// 注意这里传入的是灰度图
 void computeAngle(const cv::Mat &image, vector<cv::KeyPoint> &keypoints) {
     int half_patch_size = 8;
+
     for (auto &kp : keypoints) {
-	// START YOUR CODE HERE (~7 lines)
-        kp.angle = 0; // compute kp.angle 
+	// TODO: START YOUR CODE HERE (~7 lines)
+        kp.angle = 0; // compute kp.angle
+        int u = kp.pt.x;
+        int v = kp.pt.y;
+        if (u >= half_patch_size && u <= image.cols-half_patch_size
+        && v >= half_patch_size && v < image.rows - half_patch_size) {
+
+            double m_10 = 0;
+            double m_01 = 0;
+            for (int i = - half_patch_size; i < half_patch_size; ++i) {
+                for (int j =- half_patch_size; j < half_patch_size; ++j) {
+                    double intensity = (double)image.at<uchar>(v + j,u + i);
+                    m_01 += j*intensity;
+                    m_10 += i*intensity;
+                }
+            }
+            kp.angle = (float)atan2(m_01, m_10) * 180 / pi;
+        }
+
         // END YOUR CODE HERE
     }
     return;
 }
+
+
 
 // -------------------------------------------------------------------------------------------------- //
 // ORB pattern
@@ -376,13 +401,41 @@ int ORB_pattern[256 * 4] = {
         -1, -6, 0, -11/*mean (0.127148), correlation (0.547401)*/
 };
 
+bool inImage(int a, int b){
+    return a>= 0 && a  < 640 && b  >= 0 && b < 480;
+}
+
 // compute the descriptor
 void computeORBDesc(const cv::Mat &image, vector<cv::KeyPoint> &keypoints, vector<DescType> &desc) {
+    // 对于每个特征点
     for (auto &kp: keypoints) {
         DescType d(256, false);
+        int u = kp.pt.x;
+        int v = kp.pt.y;
+        double theta = kp.angle*pi/180;
+        int u1_update, v1_update, u2_update, v2_update;
+
         for (int i = 0; i < 256; i++) {
-            // START YOUR CODE HERE (~7 lines)
+            // TODO: START YOUR CODE HERE (~7 lines)
             d[i] = 0;  // if kp goes outside, set d.clear()
+
+            u1_update =u + (int) (cos(theta)*ORB_pattern[i*4] -sin(theta)*ORB_pattern[i*4+1]);
+            v1_update =v + (int)  (sin(theta)*ORB_pattern[i*4] + cos(theta)*ORB_pattern[i*4+1]);
+
+            u2_update =u + (int) (cos(theta)*ORB_pattern[i*4 + 2] -sin(theta)*ORB_pattern[i*4 + 3]);
+            v2_update =v + (int) (sin(theta)*ORB_pattern[i*4 + 2] + cos(theta)*ORB_pattern[i*4 + 3]);
+
+
+            if (!inImage(u1_update,v1_update) || !inImage(u2_update,v2_update)){
+                d.clear();
+                break;
+            }else{
+                double intensity1 = image.at<uchar>(v1_update,u1_update);
+                double intensity2 = image.at<uchar>(v2_update, u2_update);
+                d[i] = (intensity1 > intensity2) ? 0 : 1;
+
+
+            }
 	    // END YOUR CODE HERE
         }
         desc.push_back(d);
@@ -399,9 +452,47 @@ void computeORBDesc(const cv::Mat &image, vector<cv::KeyPoint> &keypoints, vecto
 // brute-force matching
 void bfMatch(const vector<DescType> &desc1, const vector<DescType> &desc2, vector<cv::DMatch> &matches) {
     int d_max = 50;
+    // TODO: START YOUR CODE HERE (~12 lines)
+    // find matches between desc1 and desc2.
 
-    // START YOUR CODE HERE (~12 lines)
-    // find matches between desc1 and desc2. 
+    steady_clock::time_point t1 = steady_clock::now();
+
+    DescType d1, d2;
+
+    for (int i = 0; i < desc1.size(); ++i) {
+
+        int d_min = 256, minIndex = 0;
+        d1 = desc1[i];
+        if (d1.empty()) continue;
+
+        for (int j = 0; j < desc2.size(); ++j) {
+            int distance = 0;
+            d2 = desc2[j];
+            if (d2.empty()) continue;
+            for (int k = 0; k < 256; ++k) {
+                if (d1[k] ^ d2[k]){
+                    distance += 1;
+                }
+            }
+
+            if (distance < d_min){
+                d_min = distance;
+                minIndex = j;
+            }
+        }
+
+        if (d_min > 0 && d_min < d_max){
+            DMatch match;
+            match.queryIdx = i;
+            match.trainIdx = minIndex;
+            match.distance = d_min;
+            matches.push_back(match);
+        }
+    }
+
+    steady_clock::time_point t2 = steady_clock::now();
+    duration<double> time_used = duration_cast<duration<double>>(t2 - t1);
+    cout << " Match time cost= " << time_used.count() << " seconds." << endl;
     // END YOUR CODE HERE
 
     for (auto &m: matches) {

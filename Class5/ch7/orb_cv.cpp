@@ -7,14 +7,13 @@
 using namespace std;
 using namespace cv;
 
+string first_file = "../1.png";
+string second_file = "../2.png";
+
 int main(int argc, char **argv) {
-  if (argc != 3) {
-    cout << "usage: feature_extraction img1 img2" << endl;
-    return 1;
-  }
   //-- 读取图像
-  Mat img_1 = imread(argv[1], CV_LOAD_IMAGE_COLOR);
-  Mat img_2 = imread(argv[2], CV_LOAD_IMAGE_COLOR);
+  cv::Mat img_1 = cv::imread(first_file, 0);
+  cv::Mat img_2 = cv::imread(second_file, 0);
   assert(img_1.data != nullptr && img_2.data != nullptr);
 
   //-- 初始化
